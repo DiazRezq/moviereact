@@ -59,8 +59,7 @@ function Logo() {
   );
 }
 
-function Search() {
-  const [query, setQuery] = useState("");
+function Search({ query, setQuery }) {
   return (
     <input
       className="search"
@@ -80,9 +79,9 @@ function NumResults({ movies }) {
   );
 }
 
-function MovieItem({ movie }) {
+function MovieItem({ movie, onSelectedMovieId }) {
   return (
-    <li key={movie.imdbID}>
+    <li key={movie.imdbID} onClick={() => onSelectedMovieId(movie.imdbID)}>
       <img src={movie.Poster} alt={`${movie.Title} poster`} />
       <h3>{movie.Title}</h3>
       <div>
@@ -95,11 +94,15 @@ function MovieItem({ movie }) {
   );
 }
 
-function MovieList({ movies }) {
+function MovieList({ movies, onSelectedMovieId }) {
   return (
-    <ul className="list">
+    <ul className="list list-movies">
       {movies?.map((movie, index) => (
-        <MovieItem key={index} movie={movie} />
+        <MovieItem
+          key={index}
+          movie={movie}
+          onSelectedMovieId={onSelectedMovieId}
+        />
       ))}
     </ul>
   );
@@ -113,6 +116,28 @@ function BoxMovies({ children }) {
         {isOpen ? "–" : "+"}
       </button>
       {isOpen && children}
+    </div>
+  );
+}
+
+function MovieDetails({ selectedId, onCloseMovie }) {
+  useEffect(() => {
+    async function getMovieDetails() {
+      const respons = await fetch(
+        `https://www.omdbapi.com/?apikey={API_Key}&i=${selectedId}`
+      );
+      const data = await respons.json();
+      console.log(data);
+    }
+
+    getMovieDetails();
+  }, [selectedId]);
+  return (
+    <div className="details">
+      <button className="btn-back" onClick={() => onCloseMovie()}>
+        ❌
+      </button>
+      {selectedId}
     </div>
   );
 }
@@ -210,17 +235,26 @@ export default function App() {
   const [watched, setWatched] = useState(tempWatchedData);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const query = "harry potter";
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
 
   const API_Key = "4a3b711b";
+
+  function handleSelectedMovieId(id) {
+    setSelectedId((selectedId) => (selectedId === id ? null : id));
+  }
+
+  function handleCloseMovie() {
+    setSelectedId(null);
+  }
 
   useEffect(() => {
     async function fetchMovies() {
       try {
         setIsLoading(true);
+        setError("");
         const res = await fetch(
-          `https://www.omdbapi.com/?apikey=${API_Key}&s=${query}`
+          `https://www.omdbapi.com/?s=${query}&apikey=${API_Key}`
         );
 
         if (!res.ok) throw new Error("Something went wrong");
@@ -228,6 +262,8 @@ export default function App() {
         const data = await res.json();
 
         if (data.Response === "False") throw new Error(data.Error);
+
+        console.log(data.Search);
 
         setMovies(data.Search);
       } catch (err) {
@@ -237,25 +273,49 @@ export default function App() {
       }
     }
 
+    if (query.length < 3) {
+      setMovies([]);
+      setError("");
+
+      return;
+    }
+
     fetchMovies();
-  }, []);
+  }, [query]);
 
   return (
     <>
       <NavBar>
         <Logo />
-        <Search />
+        <Search query={query} setQuery={setQuery} />
         <NumResults movies={movies} />
       </NavBar>
       <Main>
         <BoxMovies>
           {isLoading && <Loader />}
           {error && <ErrorMessage message={error} />}
-          {!isLoading && !error && <MovieList movies={movies} />}
+          {!isLoading && !error && (
+            <MovieList
+              movies={movies}
+              onSelectedMovieId={handleSelectedMovieId}
+            />
+          )}
         </BoxMovies>
         <BoxMovies>
-          <WatchedSummary watched={watched} />
-          <WatchedList watched={watched} />
+          {selectedId ? (
+            <MovieDetails
+              selectedId={selectedId}
+              onCloseMovie={handleCloseMovie}
+            />
+          ) : (
+            <>
+              <WatchedSummary
+                watched={watched}
+                onSelectedMovieId={handleSelectedMovieId}
+              />
+              <WatchedList watched={watched} />
+            </>
+          )}
         </BoxMovies>
       </Main>
     </>
