@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import StarRating from "./StarRating";
 
 const tempMovieData = [
   {
@@ -121,23 +122,78 @@ function BoxMovies({ children }) {
 }
 
 function MovieDetails({ selectedId, onCloseMovie }) {
+  const [movie, setMovie] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    Title: title,
+    Year: year,
+    Poster: poster,
+    Runtime: runtime,
+    imdbRating,
+    Plot: plot,
+    Released: released,
+    Actors: actors,
+    Director: director,
+  } = movie;
+
+  console.log(title, year);
+
   useEffect(() => {
     async function getMovieDetails() {
-      const respons = await fetch(
-        `https://www.omdbapi.com/?apikey={API_Key}&i=${selectedId}`
+      setIsLoading(true);
+
+      const API_Key = "cde27b66";
+      const response = await fetch(
+        `https://www.omdbapi.com/?apikey=${API_Key}&i=${selectedId}`
       );
-      const data = await respons.json();
-      console.log(data);
+      const data = await response.json();
+      setMovie(data);
+
+      setIsLoading(false);
     }
 
     getMovieDetails();
   }, [selectedId]);
   return (
     <div className="details">
-      <button className="btn-back" onClick={() => onCloseMovie()}>
-        ❌
-      </button>
-      {selectedId}
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <>
+          <header>
+            <button className="btn-back" onClick={() => onCloseMovie()}>
+              ❌
+            </button>
+            <img src={poster} alt={`${title} poster`} />
+            <div className="details-overview">
+              <h2>{title}</h2>
+              <p>
+                <span>📆</span>
+                <span>{released}</span>
+              </p>
+              <p>{runtime}</p>
+              <p>
+                <strong>⭐️</strong> {imdbRating} IMDb rating
+              </p>
+            </div>
+          </header>
+          <section>
+            <h3>synopsis</h3>
+            <p>
+              {" "}
+              <em>{plot}</em>
+            </p>
+            <h3>Starring</h3>
+            <p>{actors}</p>
+            <h3>Director</h3>
+            <p>{director}</p>
+            <div className="rating">
+              <StarRating max={10} size={24} color="{#fcc419}" />
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }
@@ -238,7 +294,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(null);
 
-  const API_Key = "4a3b711b";
+  const API_Key = "cde27b66";
 
   function handleSelectedMovieId(id) {
     setSelectedId((selectedId) => (selectedId === id ? null : id));
@@ -262,8 +318,6 @@ export default function App() {
         const data = await res.json();
 
         if (data.Response === "False") throw new Error(data.Error);
-
-        console.log(data.Search);
 
         setMovies(data.Search);
       } catch (err) {
