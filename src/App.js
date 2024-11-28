@@ -177,6 +177,10 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   useEffect(() => {
     if (!title) return;
     document.title = `Movie | ${title}`;
+
+    return function () {
+      document.title = "Movie";
+    };
   }, [title]);
 
   return (
@@ -367,11 +371,13 @@ export default function App() {
 
   useEffect(() => {
     async function fetchMovies() {
+      const controller = new AbortController();
       try {
         setIsLoading(true);
         setError("");
         const res = await fetch(
-          `https://www.omdbapi.com/?s=${query}&apikey=${API_Key}`
+          `https://www.omdbapi.com/?s=${query}&apikey=${API_Key}`,
+          { signal: controller.signal }
         );
 
         if (!res.ok) throw new Error("Something went wrong");
@@ -381,10 +387,13 @@ export default function App() {
         if (data.Response === "False") throw new Error(data.Error);
 
         setMovies(data.Search);
+        setError("");
       } catch (err) {
+        if (err.name === "AbortError") return;
         setError(err.message);
       } finally {
         setIsLoading(false);
+        controller.abort();
       }
     }
 
